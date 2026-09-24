@@ -1,0 +1,22 @@
+services:
+  garden-main-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      WATERING_API_URL: http://watering-api:8001
+    volumes:
+      - garden-main-dados:/app/data
+    depends_on:
+      - watering-api
+
+  watering-api:
+    build: ../watering-api
+    ports:
+      - "8001:8001"
+    volumes:
+      - watering-dados:/app/data
+
+volumes:
+  garden-main-dados:
+  watering-dados:
