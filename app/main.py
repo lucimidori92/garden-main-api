@@ -39,3 +39,13 @@ app = FastAPI(
 )
 app.include_router(plants.router)
 app.include_router(schedule.router)
+
+
+@app.get("/")
+def root() -> dict[str, str]:
+    """Greets whoever hits the API root and points them to the docs.
+
+    Returns:
+        A welcome message and the interactive docs URL.
+    """
+    return {"message": "🌱 garden-main-api is running! Docs at /docs."}
