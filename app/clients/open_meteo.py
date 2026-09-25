@@ -89,7 +89,7 @@ def get_rain_forecast(latitude: float, longitude: float) -> float:
             "longitude": longitude,
             "daily": "precipitation_sum",
             "forecast_days": 2,
-            "timezone": "America/Sao_Paulo",
+            "timezone": "auto",
         },
         timeout=TIMEOUT_SECONDS,
     )
