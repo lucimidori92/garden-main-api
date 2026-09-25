@@ -5,6 +5,7 @@ from typing import Annotated
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import asc, desc, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.clients.open_meteo import CityNotFoundError, geocode_city
@@ -84,7 +85,14 @@ def create_plant(plant_in: PlantIn, session: SessionDep) -> Plant:
         longitude=longitude,
     )
     session.add(plant)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError as exc:
+        session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A plant with this nickname, type and city is already registered.",
+        ) from exc
     session.refresh(plant)
     return plant
 
@@ -164,7 +172,14 @@ def update_plant(
     for field, value in data.items():
         setattr(plant, field, value)
 
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError as exc:
+        session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A plant with this nickname, type and city is already registered.",
+        ) from exc
     session.refresh(plant)
     return plant
 

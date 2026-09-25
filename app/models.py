@@ -2,7 +2,7 @@
 
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Float, Integer, String
+from sqlalchemy import Date, DateTime, Float, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -24,6 +24,9 @@ class Plant(Base):
     """
 
     __tablename__ = "plants"
+    __table_args__ = (
+        UniqueConstraint("nickname", "plant_type", "city", name="uq_plant_identity"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     nickname: Mapped[str] = mapped_column(String(100))
