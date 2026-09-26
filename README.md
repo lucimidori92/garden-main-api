@@ -12,7 +12,7 @@ Secondary component: [watering-api](https://github.com/lucimidori92/watering-api
 Given a plant's nickname, type and city, the system:
 
 1. resolves the city into coordinates via Open-Meteo's geocoding API and stores the plant;
-2. on `GET /schedule`, groups all plants by city and fetches one rain forecast per city from Open-Meteo;
+2. on `GET /schedule`, groups all plants by coordinates and fetches one rain forecast per location from Open-Meteo;
 3. sends each plant's type, last watering date and expected rain to `watering-api`;
 4. returns a watering decision — `water`, `wait`, `postpone` or `no_rule` — for every plant.
 
@@ -82,8 +82,12 @@ cd garden-main-api
 docker compose up --build
 ```
 
+- Or a preferential directory name by your choice
 - `garden-main-api` Swagger UI: <http://localhost:8000/docs>
 - `watering-api` Swagger UI: <http://localhost:8001/docs>
+
+To stop, press `Ctrl+C`; the containers stop but keep their data (see
+[Docker persistence](#docker-persistence) below to reset it).
 
 ## Running only garden-main-api with Docker
 
@@ -111,39 +115,6 @@ pip install -r requirements-dev.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
-## Routes
-
-| Method | Route | Calls | Description |
-|---|---|---|---|
-| GET | `/` | — | Friendly status message confirming the API is running |
-| POST | `/plants` | Open-Meteo (geocoding) | Registers a plant; resolves its city into coordinates. `404` if the city has no match, `409` if the same nickname, type and city is already registered |
-| GET | `/plants` | — | Lists plants with filters (`plant_type`, `city`), sorting (`sort_by`, `order`) and pagination (`page`, `page_size`) |
-| PUT | `/plants/{id}` | Open-Meteo, only if the city changed | Updates a plant, including `last_watered_at` (how "watered today" is recorded). `404` if not found, `409` if the update collides with another plant's nickname, type and city |
-| DELETE | `/plants/{id}` | — | Deletes a plant. `404` if not found |
-| GET | `/schedule` | Open-Meteo (forecast) → `watering-api` | Groups plants by city, fetches one forecast per city, and returns a watering decision for every plant |
-
-Full interactive documentation, with example payloads: <http://localhost:8000/docs>
-
-## Examples
-
-```bash
-curl http://localhost:8000/
-
-curl -X POST http://localhost:8000/plants \
-  -H "Content-Type: application/json" \
-  -d '{"nickname": "Basil on the windowsill", "plant_type": "herb", "city": "Campinas"}'
-
-curl "http://localhost:8000/plants?plant_type=herb&page=1&page_size=20"
-
-curl -X PUT http://localhost:8000/plants/1 \
-  -H "Content-Type: application/json" \
-  -d '{"last_watered_at": "2026-09-25"}'
-
-curl -X DELETE http://localhost:8000/plants/1
-
-curl http://localhost:8000/schedule
-```
-
 ## Docker persistence
 
 Each service persists its SQLite database through its own named Docker volume:
@@ -153,8 +124,60 @@ Each service persists its SQLite database through its own named Docker volume:
 | `garden-main-dados` | `/app/data` | `garden-main-api` |
 | `watering-dados` | `/app/data` | `watering-api` |
 
-`docker compose down` keeps this data; `docker compose down -v` resets it
-(used before recording a demo, for a clean slate).
+
+## Stopping the application
+
+- To keep the data:
+
+```bash
+docker compose down
+```
+
+- To resets it:
+
+```bash
+docker compose down -v
+```
+
+
+## Routes
+
+| Method | Route | Calls | Description |
+|---|---|---|---|
+| GET | `/` | — | Friendly status message confirming the API is running |
+| POST | `/plants` | Open-Meteo (geocoding) | Registers a plant; resolves its city into coordinates. `404` if the city has no match, `409` if the same nickname, type and city is already registered, `422` if the payload has unknown fields |
+| GET | `/plants` | — | Lists plants with filters (`plant_type`, `city`), sorting (`sort_by`, `order`) and pagination (`page`, `page_size`) |
+| PUT | `/plants/{id}` | Open-Meteo, only if the city changed | Updates a plant, including `last_watered_at` (how "watered today" is recorded). `404` if not found, `409` if the update collides with another plant's nickname, type and city, `422` if the payload has unknown fields |
+| DELETE | `/plants/{id}` | — | Deletes a plant. `404` if not found |
+| GET | `/schedule` | Open-Meteo (forecast) → `watering-api` | Groups plants by coordinates, fetches one forecast per location, and returns a watering decision for every plant |
+
+Full interactive documentation, with example payloads: <http://localhost:8000/docs>
+
+## Examples
+
+```bash
+# GET / — health check
+curl http://localhost:8000/
+
+# POST /plants — register a plant
+curl -X POST http://localhost:8000/plants \
+  -H "Content-Type: application/json" \
+  -d '{"nickname": "Basil on the windowsill", "plant_type": "herb", "city": "Campinas"}'
+
+# GET /plants — list plants (filters, sorting, pagination)
+curl "http://localhost:8000/plants?plant_type=herb&page=1&page_size=20"
+
+# PUT /plants/{id} — update a plant
+curl -X PUT http://localhost:8000/plants/1 \
+  -H "Content-Type: application/json" \
+  -d '{"last_watered_at": "2026-09-25"}'
+
+# DELETE /plants/{id} — delete a plant
+curl -X DELETE http://localhost:8000/plants/1
+
+# GET /schedule — get today's watering schedule
+curl http://localhost:8000/schedule
+```
 
 ## Project structure
 
@@ -196,4 +219,4 @@ own unit test suite for the watering decision logic — see its README.
 
 ## Author
 
-MVP developed for the Software Architecture course assignment (PUC).
+MVP developed for the Software Architecture course assignment (PUC - RJ).
