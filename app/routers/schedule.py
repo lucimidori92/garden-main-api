@@ -28,8 +28,9 @@ SessionDep = Annotated[Session, Depends(get_session)]
 def get_schedule(session: SessionDep) -> ScheduleResponse:
     """Builds today's watering schedule for every registered plant.
 
-    Groups plants by city to make one rain forecast call per city, then
-    sends the whole batch to the watering-api for a decision on each plant.
+    Groups plants by coordinates to make one rain forecast call per
+    location, then sends the whole batch to the watering-api for a
+    decision on each plant.
 
     Args:
         session: Database session injected by FastAPI.
@@ -44,13 +45,14 @@ def get_schedule(session: SessionDep) -> ScheduleResponse:
     if not plants:
         return ScheduleResponse(schedule=[])
 
-    rain_by_city: dict[str, float] = {}
+    rain_by_coords: dict[tuple[float, float], float] = {}
     for plant in plants:
-        if plant.city in rain_by_city:
+        coords = (plant.latitude, plant.longitude)
+        if coords in rain_by_coords:
             continue
         logger.info("→ Open-Meteo forecast: %s", plant.city)
         try:
-            rain_by_city[plant.city] = get_rain_forecast(
+            rain_by_coords[coords] = get_rain_forecast(
                 plant.latitude, plant.longitude
             )
         except httpx.HTTPError as exc:
@@ -66,7 +68,7 @@ def get_schedule(session: SessionDep) -> ScheduleResponse:
             "last_watered_at": plant.last_watered_at.isoformat()
             if plant.last_watered_at
             else None,
-            "expected_rain_mm": rain_by_city[plant.city],
+            "expected_rain_mm": rain_by_coords[(plant.latitude, plant.longitude)],
         }
         for plant in plants
     ]
@@ -87,7 +89,7 @@ def get_schedule(session: SessionDep) -> ScheduleResponse:
             nickname=plant.nickname,
             plant_type=plant.plant_type,
             city=plant.city,
-            expected_rain_mm=rain_by_city[plant.city],
+            expected_rain_mm=rain_by_coords[(plant.latitude, plant.longitude)],
             decision=decisions_by_id[plant.id]["decision"],
             reason=decisions_by_id[plant.id]["reason"],
             next_watering=decisions_by_id[plant.id]["next_watering"],

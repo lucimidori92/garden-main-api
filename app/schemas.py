@@ -9,6 +9,8 @@ from pydantic import BaseModel, ConfigDict, Field
 class PlantIn(BaseModel):
     """Payload to register a new plant."""
 
+    model_config = ConfigDict(extra="forbid")
+
     nickname: str = Field(examples=["Basil on the windowsill"])
     plant_type: str = Field(examples=["herb"])
     city: str = Field(examples=["Campinas"])
@@ -16,6 +18,8 @@ class PlantIn(BaseModel):
 
 class PlantUpdate(BaseModel):
     """Payload to update an existing plant. Unset fields are left unchanged."""
+
+    model_config = ConfigDict(extra="forbid")
 
     nickname: str | None = Field(default=None, examples=["Basil on the windowsill"])
     plant_type: str | None = Field(default=None, examples=["herb"])
